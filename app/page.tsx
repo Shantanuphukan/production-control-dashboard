@@ -187,22 +187,20 @@ export default function Home() {
     setActiveKpi("All");
   }
 
-  function handleKpiClick(
-    filter: KpiFilter,
-  ) {
-    setSearch("");
-    setStatus("All");
-    setActiveKpi(filter);
-  }
+function handleKpiClick(filter: KpiFilter) {
+  setSearch("");
+  setStatus("All");
+  setActiveKpi(filter);
+}
 
-  function clearFilters() {
-    setSearch("");
-    setStatus("All");
-    setActiveKpi("All");
-  }
+function clearFilters() {
+  setSearch("");
+  setStatus("All");
+  setActiveKpi("All");
+}
 
   return (
-    <main className="min-h-screen bg-muted/20">
+   <main className="min-h-screen bg-muted/20 [overflow-anchor:none]">
       <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <DashboardHeader
           jobCount={totalJobs}
@@ -296,12 +294,12 @@ export default function Home() {
             }
           />
 
-          <div className="mt-4">
-            <JobsTable
-              jobs={filteredJobs}
-              onJobSelect={handleJobSelect}
-            />
-          </div>
+         <div className="mt-4 min-h-[760px]">
+  <JobsTable
+    jobs={filteredJobs}
+    onJobSelect={handleJobSelect}
+  />
+</div>
 
           {filteredJobs.length === 0 && (
             <div className="mt-3 flex justify-center">
