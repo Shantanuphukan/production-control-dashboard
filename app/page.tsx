@@ -1,69 +1,217 @@
-import Image from "next/image";
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  Clock3,
+  Factory,
+  TriangleAlert,
+} from "lucide-react";
+
+import { jobs as initialJobs } from "@/data/jobs";
+import type { Job, JobStatus } from "@/types/job";
+
+import { DashboardHeader } from "@/components/dashboard-header";
+import { JobDetailPanel } from "@/components/job-detail-panel";
+import {
+  JobsToolbar,
+  type SortField,
+} from "@/components/jobs-toolbar";
+import { JobsTable } from "@/components/jobs-table";
+import { StatusBadge } from "@/components/status-badge";
+import { SummaryCard } from "@/components/summary-card";
 
 export default function Home() {
+  const [jobs, setJobs] = useState<Job[]>(initialJobs);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<JobStatus | "All">("All");
+  const [sortBy, setSortBy] = useState<SortField>("dueDate");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
+    "asc",
+  );
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const filteredJobs = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    const result = jobs.filter((job) => {
+      const matchesSearch =
+        normalizedSearch === "" ||
+        job.id.toLowerCase().includes(normalizedSearch) ||
+        job.productName.toLowerCase().includes(normalizedSearch) ||
+        job.customer.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus =
+        status === "All" || job.status === status;
+
+      return matchesSearch && matchesStatus;
+    });
+
+    return [...result].sort((a, b) => {
+      const comparison =
+        sortBy === "dueDate"
+          ? a.dueDate.localeCompare(b.dueDate)
+          : a.quantity - b.quantity;
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [jobs, search, status, sortBy, sortDirection]);
+
+  const totalJobs = jobs.length;
+
+  const delayedJobs = jobs.filter(
+    (job) => job.status === "Delayed",
+  ).length;
+
+  const completedJobs = jobs.filter(
+    (job) => job.status === "Completed",
+  ).length;
+
+  const dueSoonJobs = jobs.filter((job) => {
+    if (job.status === "Completed") {
+      return false;
+    }
+
+    const today = new Date("2026-09-18T00:00:00");
+    const dueDate = new Date(`${job.dueDate}T00:00:00`);
+
+    const difference =
+      dueDate.getTime() - today.getTime();
+
+    const daysUntilDue =
+      difference / (1000 * 60 * 60 * 24);
+
+    return daysUntilDue >= 0 && daysUntilDue <= 3;
+  }).length;
+
+  function handleJobSelect(job: Job) {
+    setSelectedJob(job);
+    setPanelOpen(true);
+  }
+
+  function handleStatusChange(newStatus: JobStatus) {
+    if (!selectedJob) {
+      return;
+    }
+
+    setJobs((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === selectedJob.id
+          ? { ...job, status: newStatus }
+          : job,
+      ),
+    );
+
+    setSelectedJob((currentJob) =>
+      currentJob
+        ? { ...currentJob, status: newStatus }
+        : currentJob,
+    );
+  }
+
+  function clearFilters() {
+    setSearch("");
+    setStatus("All");
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <main className="min-h-screen bg-muted/20">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <DashboardHeader jobCount={totalJobs} />
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Total jobs"
+            value={totalJobs}
+            icon={Factory}
+            description="All production jobs"
+          />
+
+          <SummaryCard
+            label="Delayed"
+            value={delayedJobs}
+            icon={TriangleAlert}
+            description="Jobs requiring attention"
+          />
+
+          <SummaryCard
+            label="Due soon"
+            value={dueSoonJobs}
+            icon={Clock3}
+            description="Due within the next 3 days"
+          />
+
+          <SummaryCard
+            label="Completed"
+            value={completedJobs}
+            icon={CheckCircle2}
+            description="Finished production jobs"
+          />
+        </section>
+
+        <section className="mt-8">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Production jobs
+              </h2>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                Select a job to view details and update its status.
+              </p>
+            </div>
+
+            <p className="hidden text-sm text-muted-foreground sm:block">
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {filteredJobs.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-foreground">
+                {totalJobs}
+              </span>
+            </p>
+          </div>
+
+          <JobsToolbar
+            search={search}
+            status={status}
+            sortBy={sortBy}
+            sortDirection={sortDirection}
+            onSearchChange={setSearch}
+            onStatusChange={setStatus}
+            onSortByChange={setSortBy}
+            onSortDirectionChange={setSortDirection}
+          />
+
+          <div className="mt-4">
+            <JobsTable
+              jobs={filteredJobs}
+              onJobSelect={handleJobSelect}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          </div>
+
+          {filteredJobs.length === 0 && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-sm font-medium underline underline-offset-4"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <JobDetailPanel
+        job={selectedJob}
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        onStatusChange={handleStatusChange}
+      />
+    </main>
   );
 }
